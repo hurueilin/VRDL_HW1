@@ -1,4 +1,4 @@
-from ctypes import resize
+from numpy.core.fromnumeric import std
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
@@ -8,6 +8,7 @@ import torchvision.models
 from torchsummary import summary
 import numpy as np
 from PIL import Image
+from torchvision.transforms.transforms import RandomCrop
 from tqdm import tqdm
 
 # from Models import MyClassifier
@@ -18,47 +19,49 @@ import util
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Hyperparameters
-NUM_CLASSES = 201  # 200+1 (ignore index 0)
-EPOCH = 3
+NUM_CLASSES = 200
+EPOCH = 10
 BATCH_SIZE = 8
 LR = 0.001
 
 
 class MyDataset(Dataset):
     def __init__(self, txt_file, transform=None):
-        dataset = []
+        data = []
         with open(txt_file, 'r') as file_handler:
             for line in file_handler:
                 line = line.strip('\n')
                 imgName, label = line.split()
                 label = label.split('.')[0]
-                dataset.append((imgName, label))
+                data.append((imgName, label))
 
-        self.dataset = dataset
+        self.data = data
         self.transform = transform
         
     def __getitem__(self, index):
-        imgName, label = self.dataset[index]
+        imgName, label = self.data[index]
         img = Image.open('data/training_images/'+imgName).convert('RGB')
 
         if self.transform:
             img = self.transform(img)
         
-        # Convert 'str' label to one-hot vector?
-        label = int(label)
+        # Convert 'str' label to tensor
+        label = int(label) - 1  # label 0~199 matches class 1~200
         label = torch.tensor([label])
 
         return img, label
     
     def __len__(self):
-        return len(self.dataset)
+        return len(self.data)
 
 
 train_transform = transforms.Compose([
-        # transforms.RandomRotation(degrees=3),
-        # transforms.RandomHorizontalFlip(),
-        transforms.Resize((224,224)),
+        transforms.RandomRotation(degrees=3),
+        transforms.RandomHorizontalFlip(),
+        transforms.Resize((256, 256)),
+        transforms.RandomCrop((224, 224)),
         transforms.ToTensor(),
+        transforms.Normalize(mean=[0.483, 0.498, 0.432], std=[0.237, 0.233, 0.272])
     ])
 
 train_dataset = MyDataset(txt_file='data/training_labels.txt', transform=train_transform)
@@ -74,7 +77,7 @@ train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
 # model.device = device
 
 # Init well-known model and modify the last FC layer
-model = torchvision.models.resnet18(pretrained=True)
+model = torchvision.models.resnet50(pretrained=True)
 # # Freeze all the network except the final layer
 # # Ps: Only need to do this when feature extracting (We are finetuning now, no need to do this!) 
 # # for param in model.parameters():
@@ -133,7 +136,7 @@ for epoch in tqdm(range(EPOCH)):
         
         # statistics
         running_loss += loss.item() * images.size(0)  # images.size(0) means BATCH_SIZE
-        running_corrects += torch.sum(preds == labels.squeeze().data)
+        running_corrects += torch.sum(preds == labels.squeeze())
 
     epoch_loss = running_loss / len(train_dataset)
     epoch_acc = running_corrects.double() / len(train_dataset)
@@ -144,9 +147,10 @@ for epoch in tqdm(range(EPOCH)):
     print('Training Loss: {:.4f} Acc: {:.4f}'.format(epoch_loss, epoch_acc))
 
     # Decay learning rate
-    if (epoch+1) % 10 == 0:
-        curr_lr /= 3
-        update_lr(optimizer, curr_lr)
+    if (epoch+1) > 5:
+        if (epoch+1) % 2 == 0:
+            curr_lr /= 3
+            update_lr(optimizer, curr_lr)
 
 
     # # ---------- Validation ----------
@@ -198,6 +202,7 @@ for epoch in tqdm(range(EPOCH)):
 
 # Output the training info cruves
 # util.save_loss_history(training_loss_history, val_loss_history, EPOCH)
+util.save_loss_history(training_loss_history, EPOCH)
 # util.save_accuracy_history(training_accuracy_history, val_accuracy_history, EPOCH)
 # util.save_top3error_history(val_top3error_history, EPOCH)
 # print('Best accuracy in validation:', best_acc)
@@ -205,3 +210,4 @@ for epoch in tqdm(range(EPOCH)):
 # print('Top3 error rate of validation data:', val_top3error_history)
 
 torch.save(model, 'output/last_model.pth')
+print('Finish training. The last model is saved in output/last_model.pth')
