@@ -8,11 +8,8 @@ import torchvision.models
 from torchsummary import summary
 import numpy as np
 from PIL import Image
-from torchvision.transforms.transforms import RandomCrop
 from tqdm import tqdm
 
-# from Models import MyClassifier
-import util
 
 
 # Device configuration
@@ -20,7 +17,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Hyperparameters
 NUM_CLASSES = 200
-EPOCH = 10
+EPOCH = 30
 BATCH_SIZE = 8
 LR = 0.001
 
@@ -58,6 +55,7 @@ class MyDataset(Dataset):
 train_transform = transforms.Compose([
         transforms.RandomRotation(degrees=3),
         transforms.RandomHorizontalFlip(),
+        transforms.ColorJitter(brightness=0, contrast=0, saturation=0, hue=0),
         transforms.Resize((256, 256)),
         transforms.RandomCrop((224, 224)),
         transforms.ToTensor(),
@@ -77,7 +75,7 @@ train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
 # model.device = device
 
 # Init well-known model and modify the last FC layer
-model = torchvision.models.resnet50(pretrained=True)
+model = torchvision.models.resnet101(pretrained=True)
 # # Freeze all the network except the final layer
 # # Ps: Only need to do this when feature extracting (We are finetuning now, no need to do this!) 
 # # for param in model.parameters():
@@ -118,6 +116,7 @@ for epoch in tqdm(range(EPOCH)):
     for i, (images, labels) in enumerate(tqdm(train_loader)):
         images = images.to(device)
         labels = labels.to(device)
+        labels = labels.squeeze()
         
         with torch.set_grad_enabled(True):
             # Forward pass
@@ -126,7 +125,7 @@ for epoch in tqdm(range(EPOCH)):
 
             # loss = criterion(outputs, labels)  # We don't need to apply softmax before computing cross-entropy as it is done automatically.
             # loss = criterion(outputs, torch.max(labels, 1)[1])
-            loss = criterion(outputs, labels.squeeze())
+            loss = criterion(outputs, labels)
             
             # zero the parameter gradients
             optimizer.zero_grad()
@@ -136,7 +135,7 @@ for epoch in tqdm(range(EPOCH)):
         
         # statistics
         running_loss += loss.item() * images.size(0)  # images.size(0) means BATCH_SIZE
-        running_corrects += torch.sum(preds == labels.squeeze())
+        running_corrects += torch.sum(preds == labels)
 
     epoch_loss = running_loss / len(train_dataset)
     epoch_acc = running_corrects.double() / len(train_dataset)
@@ -202,12 +201,12 @@ for epoch in tqdm(range(EPOCH)):
 
 # Output the training info cruves
 # util.save_loss_history(training_loss_history, val_loss_history, EPOCH)
-util.save_loss_history(training_loss_history, EPOCH)
+# util.save_loss_history(training_loss_history, EPOCH)
 # util.save_accuracy_history(training_accuracy_history, val_accuracy_history, EPOCH)
 # util.save_top3error_history(val_top3error_history, EPOCH)
 # print('Best accuracy in validation:', best_acc)
 # print('Best epoch:', best_epoch)
 # print('Top3 error rate of validation data:', val_top3error_history)
 
-torch.save(model, 'output/last_model.pth')
-print('Finish training. The last model is saved in output/last_model.pth')
+torch.save(model, 'output/models/resnet101_try.pth')
+print('Finish training. The last model is saved in output/models folder.')

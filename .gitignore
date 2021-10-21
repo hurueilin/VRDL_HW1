@@ -1,4 +1,5 @@
 __pycache__
 data
 sample_readme
-output/*.pth
+output/models
+temp

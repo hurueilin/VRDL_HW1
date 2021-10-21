@@ -1,14 +1,14 @@
 import torch
-import torch.nn as nn
 from torch.utils.data import Dataset
-import torchvision
 import torchvision.transforms as transforms
 import torchvision.models
 from torchsummary import summary
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-from collections import defaultdict
+import util
+from argparse import ArgumentParser
+import os
 
 
 # Mapping of labels: 0~199 to classNames: 1~200
@@ -61,25 +61,51 @@ test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                           batch_size=BATCH_SIZE,
                                           shuffle=False)
 
+# Parser for loading model
+# parser = ArgumentParser()
+# parser.add_argument("-m", "--model", help="the model(.pth) you want to load in", dest="model", default="last_model.pth")
+# args = parser.parse_args()
+
 # Load model
-model = torch.load('output/last_model.pth')
-summary(model, (3, 32, 32))
+# model = torch.load(f'output/models/{args.model}')
+# summary(model, (3, 32, 32))
+
+# Load all models in output/models folder
+models = []
+modelFiles = os.listdir('output/models')
+print(f'There are {len(modelFiles)} models in model ensemble:')
+for i, modelFile in enumerate(modelFiles):
+    print(f'Model #{i}: {modelFile}')
+    models.append(torch.load(f'output/models/{modelFile}'))
+
+
 
 # ---------- Testing: save Top1 predicted label to predictions list ----------
-model.eval()
-predictions = []
-with torch.no_grad():
-    total = 0
-    for images in tqdm(test_loader):
-        images = images.to(device)
-        outputs = model(images)
-        _, preds = torch.max(outputs, 1)
+print('======= Predictions Starts =======')
+modelsPredictions = []
+for i, model in enumerate(models):
+    print(f'Model #{i} predicting...')
+    model.eval()
+    predictions = []
+    with torch.no_grad():
+        total = 0
+        for images in tqdm(test_loader):
+            images = images.to(device)
+            outputs = model(images)
+            _, preds = torch.max(outputs, 1)
 
-        for item in preds:
-            predictions.append(item.tolist())
+            for item in preds:
+                predictions.append(item.tolist())
 
-        total += images.size(0)
-# print(predictions)
+            total += images.size(0)
+        
+        modelsPredictions.append(predictions)
+        print(f'Finish saving predictions of {total} testing data of model #{i}!')
+
+
+
+print('Majority voting...')
+submission = util.majorityVote(modelsPredictions)
 
 
 # Create submission file: answer.txt
@@ -92,4 +118,4 @@ for imgName, pred in zip(test_images, predictions):
     submission.append([imgName, predicted_class])
 
 np.savetxt('output/answer.txt', submission, fmt='%s')
-print(f'Finish saving predictions of {total} testing data to output/answer.txt !')
+print(f'Finish saving final predictions of {total} testing data to output/answer.txt !')
