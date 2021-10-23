@@ -1,6 +1,8 @@
 from numpy.core.fromnumeric import std
+from numpy.core.numeric import cross
 import torch
 import torch.nn as nn
+from torch.nn.modules.loss import CrossEntropyLoss
 from torch.utils.data import Dataset
 import torchvision
 import torchvision.transforms as transforms
@@ -9,7 +11,7 @@ from torchsummary import summary
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-
+from center_loss import CenterLoss
 
 
 # Device configuration
@@ -17,7 +19,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Hyperparameters
 NUM_CLASSES = 200
-EPOCH = 30
+EPOCH = 25
 BATCH_SIZE = 8
 LR = 0.001
 
@@ -75,11 +77,7 @@ train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
 # model.device = device
 
 # Init well-known model and modify the last FC layer
-model = torchvision.models.resnet101(pretrained=True)
-# # Freeze all the network except the final layer
-# # Ps: Only need to do this when feature extracting (We are finetuning now, no need to do this!) 
-# # for param in model.parameters():
-# #     param.requires_grad = False # Parameters of newly constructed modules have requires_grad=True by default
+model = torchvision.models.resnext101_32x8d(pretrained=True)
 num_ftrs = model.fc.in_features
 model.fc = nn.Linear(num_ftrs, NUM_CLASSES)
 model = model.to(device)  # Send the model to GPU
@@ -90,8 +88,10 @@ print('num_of_params:', num_of_params)
 
 
 # Loss and optimizer
-criterion = nn.CrossEntropyLoss()
+criterion_CE = nn.CrossEntropyLoss()
+criterion_CL = CenterLoss(num_classes=200, feat_dim=200, use_gpu=True)
 optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=0.9)
+optimizer_centloss = torch.optim.SGD(criterion_CL.parameters(), lr=0.5)
 
 # For updating learning rate
 def update_lr(optimizer, lr):    
@@ -107,6 +107,8 @@ best_epoch = 0
 training_loss_history, training_accuracy_history = [], []
 val_loss_history, val_accuracy_history = [], []
 val_top3error_history = []
+alpha = 0.003  # alpha (float): weight for center loss
+
 
 for epoch in tqdm(range(EPOCH)):
     # ---------- Training ---------
@@ -123,15 +125,26 @@ for epoch in tqdm(range(EPOCH)):
             outputs = model(images)
             _, preds = torch.max(outputs, 1)
 
-            # loss = criterion(outputs, labels)  # We don't need to apply softmax before computing cross-entropy as it is done automatically.
-            # loss = criterion(outputs, torch.max(labels, 1)[1])
-            loss = criterion(outputs, labels)
+            cross_entropy_loss = criterion_CE(outputs, labels)
+            center_loss = criterion_CL(outputs, labels)
+            loss =  center_loss * alpha + cross_entropy_loss
+            # print(f'cross_entropy_loss: {cross_entropy_loss.item()}')
+            # print(f'center_loss: {center_loss.item()}')
+            # print(f'total weighted loss: {loss.item()}')
             
             # zero the parameter gradients
             optimizer.zero_grad()
+            optimizer_centloss.zero_grad()
+            
             # Backward and optimize (only in train phase)
             loss.backward()
             optimizer.step()
+           
+            # multiple (1./alpha) in order to remove the effect of alpha on updating centers
+            for param in criterion_CL.parameters():
+                param.grad.data *= (1./alpha)
+            optimizer_centloss.step()
+            
         
         # statistics
         running_loss += loss.item() * images.size(0)  # images.size(0) means BATCH_SIZE
@@ -147,7 +160,7 @@ for epoch in tqdm(range(EPOCH)):
 
     # Decay learning rate
     if (epoch+1) > 5:
-        if (epoch+1) % 2 == 0:
+        if (epoch+1) % 3 == 0:
             curr_lr /= 3
             update_lr(optimizer, curr_lr)
 
@@ -208,5 +221,5 @@ for epoch in tqdm(range(EPOCH)):
 # print('Best epoch:', best_epoch)
 # print('Top3 error rate of validation data:', val_top3error_history)
 
-torch.save(model, 'output/models/resnet101_try.pth')
+torch.save(model, 'output/models/resnext101_32x8d.pth')
 print('Finish training. The last model is saved in output/models folder.')
