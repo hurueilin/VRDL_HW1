@@ -1,8 +1,5 @@
-from numpy.core.fromnumeric import std
-from numpy.core.numeric import cross
 import torch
 import torch.nn as nn
-from torch.nn.modules.loss import CrossEntropyLoss
 from torch.utils.data import Dataset
 import torchvision
 import torchvision.transforms as transforms
@@ -19,7 +16,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Hyperparameters
 NUM_CLASSES = 200
-EPOCH = 25
+EPOCH = 40
 BATCH_SIZE = 8
 LR = 0.001
 
@@ -55,13 +52,12 @@ class MyDataset(Dataset):
 
 
 train_transform = transforms.Compose([
-        transforms.RandomRotation(degrees=3),
-        transforms.RandomHorizontalFlip(),
-        transforms.ColorJitter(brightness=0, contrast=0, saturation=0, hue=0),
         transforms.Resize((256, 256)),
+        transforms.RandomRotation(degrees=5),
         transforms.RandomCrop((224, 224)),
+        transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.483, 0.498, 0.432], std=[0.237, 0.233, 0.272])
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # computed from ImageNet images
     ])
 
 train_dataset = MyDataset(txt_file='data/training_labels.txt', transform=train_transform)
@@ -107,7 +103,7 @@ best_epoch = 0
 training_loss_history, training_accuracy_history = [], []
 val_loss_history, val_accuracy_history = [], []
 val_top3error_history = []
-alpha = 0.003  # alpha (float): weight for center loss
+alpha = 0.001  # alpha (float): weight for center loss
 
 
 for epoch in tqdm(range(EPOCH)):
@@ -221,5 +217,5 @@ for epoch in tqdm(range(EPOCH)):
 # print('Best epoch:', best_epoch)
 # print('Top3 error rate of validation data:', val_top3error_history)
 
-torch.save(model, 'output/models/resnext101_32x8d.pth')
+torch.save(model, 'output/models/resnext101_32x8d_5.pth')
 print('Finish training. The last model is saved in output/models folder.')

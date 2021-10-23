@@ -52,9 +52,10 @@ class MyDataset(Dataset):
         return len(self.data)
 
 data_transform = transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize((256, 256)),
+        transforms.CenterCrop((224, 224)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.483, 0.498, 0.432], std=[0.237, 0.233, 0.272])
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 test_dataset = MyDataset(txt_file='data/testing_img_order.txt', transform=data_transform)
 test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
