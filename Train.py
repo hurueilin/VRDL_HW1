@@ -42,8 +42,7 @@ class MyDataset(Dataset):
             img = self.transform(img)
         
         # Convert 'str' label to tensor
-        label = int(label) - 1  # label 0~199 matches class 1~200
-        label = torch.tensor([label])
+        label = torch.tensor(int(label) - 1)  # label 0~199 matches class 1~200
 
         return img, label
     
@@ -53,9 +52,9 @@ class MyDataset(Dataset):
 
 train_transform = transforms.Compose([
         transforms.Resize((256, 256)),
-        transforms.RandomRotation(degrees=5),
+        transforms.RandomRotation(degrees=3),
         transforms.RandomCrop((224, 224)),
-        transforms.RandomHorizontalFlip(),
+        transforms.RandomHorizontalFlip(p=0.7),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # computed from ImageNet images
     ])
@@ -114,7 +113,6 @@ for epoch in tqdm(range(EPOCH)):
     for i, (images, labels) in enumerate(tqdm(train_loader)):
         images = images.to(device)
         labels = labels.to(device)
-        labels = labels.squeeze()
         
         with torch.set_grad_enabled(True):
             # Forward pass
@@ -217,5 +215,5 @@ for epoch in tqdm(range(EPOCH)):
 # print('Best epoch:', best_epoch)
 # print('Top3 error rate of validation data:', val_top3error_history)
 
-torch.save(model, 'output/models/resnext101_32x8d_5.pth')
+torch.save(model, 'output/models/resnext101_32x8d_6-3.pth')
 print('Finish training. The last model is saved in output/models folder.')
