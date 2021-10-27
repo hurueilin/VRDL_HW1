@@ -36,7 +36,8 @@ class MyDataset(Dataset):
         
     def __getitem__(self, index):
         imgName, label = self.data[index]
-        img = Image.open('data/training_images/'+imgName).convert('RGB')
+        # img = Image.open('data/training_images/'+imgName).convert('RGB')
+        img = Image.open('data/training_images_augmented/'+imgName).convert('RGB')
 
         if self.transform:
             img = self.transform(img)
@@ -59,7 +60,8 @@ train_transform = transforms.Compose([
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # computed from ImageNet images
     ])
 
-train_dataset = MyDataset(txt_file='data/training_labels.txt', transform=train_transform)
+# train_dataset = MyDataset(txt_file='data/training_labels.txt', transform=train_transform)
+train_dataset = MyDataset(txt_file='data/training_augmented_labels.txt', transform=train_transform)
 train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                            batch_size=BATCH_SIZE,
                                            shuffle=True)
@@ -215,5 +217,5 @@ for epoch in tqdm(range(EPOCH)):
 # print('Best epoch:', best_epoch)
 # print('Top3 error rate of validation data:', val_top3error_history)
 
-torch.save(model, 'output/models/resnext101_32x8d_6-3.pth')
+torch.save(model, 'output/models/resnext101_32x8d_7-2.pth')
 print('Finish training. The last model is saved in output/models folder.')
