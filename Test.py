@@ -1,7 +1,6 @@
 import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
-import torchvision.models
 from torchsummary import summary
 import numpy as np
 from PIL import Image

@@ -5,10 +5,10 @@ import torchvision
 import torchvision.transforms as transforms
 import torchvision.models
 from torchsummary import summary
-import numpy as np
 from PIL import Image
 from tqdm import tqdm
 from center_loss import CenterLoss
+import math
 
 
 # Device configuration
@@ -16,7 +16,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Hyperparameters
 NUM_CLASSES = 200
-EPOCH = 40
+EPOCH = 50
 BATCH_SIZE = 8
 LR = 0.001
 
@@ -90,11 +90,20 @@ criterion_CL = CenterLoss(num_classes=200, feat_dim=200, use_gpu=True)
 optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=0.9)
 optimizer_centloss = torch.optim.SGD(criterion_CL.parameters(), lr=0.5)
 
+# Consine lr
+t = 10  # warm-up epochs
+T = EPOCH  # First 10 epoch for warm-up, T eooch for cosine rate
+n_t = 0.5
+lambda1 = lambda epoch: (0.9*epoch / t+0.1) if epoch < t else  0.1  if n_t * (1+math.cos(math.pi*(epoch - t)/(T-t)))<0.1 else n_t * (1+math.cos(math.pi*(epoch - t)/(T-t)))
+scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
+
 # For updating learning rate
 def update_lr(optimizer, lr):    
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
-
+def get_lr(optimizer):
+    for param_group in optimizer.param_groups:
+        return param_group['lr']
 
 
 # Train the model
@@ -112,6 +121,8 @@ for epoch in tqdm(range(EPOCH)):
     model.train()  # Set model to training mode
     running_loss = 0.0
     running_corrects = 0
+    
+    print('\nCurrent lr:', get_lr(optimizer))
     for i, (images, labels) in enumerate(tqdm(train_loader)):
         images = images.to(device)
         labels = labels.to(device)
@@ -155,10 +166,11 @@ for epoch in tqdm(range(EPOCH)):
     print('Training Loss: {:.4f} Acc: {:.4f}'.format(epoch_loss, epoch_acc))
 
     # Decay learning rate
-    if (epoch+1) > 5:
-        if (epoch+1) % 3 == 0:
-            curr_lr /= 3
-            update_lr(optimizer, curr_lr)
+    # if (epoch+1) > 5:
+    #     if (epoch+1) % 3 == 0:
+    #         curr_lr /= 3
+    #         update_lr(optimizer, curr_lr)
+    scheduler.step()
 
 
     # # ---------- Validation ----------
@@ -217,5 +229,5 @@ for epoch in tqdm(range(EPOCH)):
 # print('Best epoch:', best_epoch)
 # print('Top3 error rate of validation data:', val_top3error_history)
 
-torch.save(model, 'output/models/resnext101_32x8d_7-2.pth')
+torch.save(model, 'output/models/resnext101_32x8d_8.pth')
 print('Finish training. The last model is saved in output/models folder.')
