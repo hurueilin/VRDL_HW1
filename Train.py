@@ -16,7 +16,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Hyperparameters
 NUM_CLASSES = 200
-EPOCH = 50
+EPOCH = 40
 BATCH_SIZE = 8
 LR = 0.001
 
@@ -68,34 +68,36 @@ train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
 
 
 
-
-# Initialize a model, and put it on the device specified.
-# model = MyClassifier().to(device)
-# model.device = device
-
 # Init well-known model and modify the last FC layer
-model = torchvision.models.resnext101_32x8d(pretrained=True)
-num_ftrs = model.fc.in_features
-model.fc = nn.Linear(num_ftrs, NUM_CLASSES)
+# model = torchvision.models.resnext101_32x8d(pretrained=True)
+# num_ftrs = model.fc.in_features
+# model.fc = nn.Linear(num_ftrs, NUM_CLASSES)
+
+model = torchvision.models.densenet161(pretrained=True)
+num_ftrs = model.classifier.in_features
+model.classifier = nn.Linear(num_ftrs, NUM_CLASSES)
+
 model = model.to(device)  # Send the model to GPU
 
-summary(model, (3, 32, 32))
+# Show model summary
+# summary(model, (3, 32, 32))  # resnet
+summary(model, (3, 224, 224))  # densenet
 num_of_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-print('num_of_params:', num_of_params)
+print('Total number of params:', num_of_params)
 
 
 # Loss and optimizer
 criterion_CE = nn.CrossEntropyLoss()
 criterion_CL = CenterLoss(num_classes=200, feat_dim=200, use_gpu=True)
-optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=0.9)
+optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=0.9, weight_decay=0.0001)
 optimizer_centloss = torch.optim.SGD(criterion_CL.parameters(), lr=0.5)
 
 # Consine lr
-t = 10  # warm-up epochs
-T = EPOCH  # First 10 epoch for warm-up, T eooch for cosine rate
-n_t = 0.5
-lambda1 = lambda epoch: (0.9*epoch / t+0.1) if epoch < t else  0.1  if n_t * (1+math.cos(math.pi*(epoch - t)/(T-t)))<0.1 else n_t * (1+math.cos(math.pi*(epoch - t)/(T-t)))
-scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
+# t = 10  # warm-up epochs
+# T = EPOCH  # First 10 epoch for warm-up, T eooch for cosine rate
+# n_t = 0.5
+# lambda1 = lambda epoch: (0.9*epoch / t+0.1) if epoch < t else  0.1  if n_t * (1+math.cos(math.pi*(epoch - t)/(T-t)))<0.1 else n_t * (1+math.cos(math.pi*(epoch - t)/(T-t)))
+# scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
 
 # For updating learning rate
 def update_lr(optimizer, lr):    
@@ -166,11 +168,12 @@ for epoch in tqdm(range(EPOCH)):
     print('Training Loss: {:.4f} Acc: {:.4f}'.format(epoch_loss, epoch_acc))
 
     # Decay learning rate
-    # if (epoch+1) > 5:
-    #     if (epoch+1) % 3 == 0:
-    #         curr_lr /= 3
-    #         update_lr(optimizer, curr_lr)
-    scheduler.step()
+    if (epoch+1) > 5:
+        if (epoch+1) % 5 == 0:
+            curr_lr /= 2
+            update_lr(optimizer, curr_lr)
+
+    # scheduler.step()
 
 
     # # ---------- Validation ----------
@@ -229,5 +232,5 @@ for epoch in tqdm(range(EPOCH)):
 # print('Best epoch:', best_epoch)
 # print('Top3 error rate of validation data:', val_top3error_history)
 
-torch.save(model, 'output/models/resnext101_32x8d_8.pth')
+torch.save(model, 'output/models/densenet161_3.pth')
 print('Finish training. The last model is saved in output/models folder.')
