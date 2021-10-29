@@ -18,7 +18,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # Hyperparameters
 NUM_CLASSES = 200
 EPOCH = 40
-BATCH_SIZE = 16
+BATCH_SIZE = 8
 LR = 0.001
 
 
@@ -54,10 +54,10 @@ class MyDataset(Dataset):
 
 train_transform = transforms.Compose([
         # transforms.Resize((256, 256)),
-        transforms.Resize((320, 320)),
+        transforms.Resize((400, 400)),
         transforms.RandomRotation(degrees=3),
         # transforms.RandomCrop((224, 224)),
-        transforms.RandomCrop((320, 300)),
+        transforms.RandomCrop((384, 380)),
         transforms.RandomHorizontalFlip(p=0.7),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # computed from ImageNet images
@@ -75,13 +75,14 @@ train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
 # model = torchvision.models.resnext101_32x8d(pretrained=True)
 # num_ftrs = model.fc.in_features
 # model.fc = nn.Linear(num_ftrs, NUM_CLASSES)
-model = EfficientNet.from_pretrained('efficientnet-b3', num_classes=200)
+model = EfficientNet.from_pretrained('efficientnet-b4', num_classes=200)
 model = model.to(device)  # Send the model to GPU
 
 # Show model summary
 # summary(model, (3, 32, 32))  # resnet
 # summary(model, (3, 224, 224))  # densenet
-summary(model, (3, 320, 300))
+# summary(model, (3, 320, 300))  # efficient-b3
+summary(model, (3, 384, 380))  # efficient-b4
 num_of_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 print('Total number of params:', num_of_params)
 
@@ -230,5 +231,5 @@ for epoch in tqdm(range(EPOCH)):
 # print('Best epoch:', best_epoch)
 # print('Top3 error rate of validation data:', val_top3error_history)
 
-torch.save(model, 'output/models/efficientnetb3_1.pth')
+torch.save(model, 'output/models/efficientnetb4_1.pth')
 print('Finish training. The last model is saved in output/models folder.')
