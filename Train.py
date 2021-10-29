@@ -9,6 +9,7 @@ from PIL import Image
 from tqdm import tqdm
 from center_loss import CenterLoss
 import math
+from efficientnet_pytorch import EfficientNet
 
 
 # Device configuration
@@ -17,7 +18,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # Hyperparameters
 NUM_CLASSES = 200
 EPOCH = 40
-BATCH_SIZE = 8
+BATCH_SIZE = 16
 LR = 0.001
 
 
@@ -52,9 +53,11 @@ class MyDataset(Dataset):
 
 
 train_transform = transforms.Compose([
-        transforms.Resize((256, 256)),
+        # transforms.Resize((256, 256)),
+        transforms.Resize((320, 320)),
         transforms.RandomRotation(degrees=3),
-        transforms.RandomCrop((224, 224)),
+        # transforms.RandomCrop((224, 224)),
+        transforms.RandomCrop((320, 300)),
         transforms.RandomHorizontalFlip(p=0.7),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # computed from ImageNet images
@@ -72,16 +75,13 @@ train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
 # model = torchvision.models.resnext101_32x8d(pretrained=True)
 # num_ftrs = model.fc.in_features
 # model.fc = nn.Linear(num_ftrs, NUM_CLASSES)
-
-model = torchvision.models.densenet161(pretrained=True)
-num_ftrs = model.classifier.in_features
-model.classifier = nn.Linear(num_ftrs, NUM_CLASSES)
-
+model = EfficientNet.from_pretrained('efficientnet-b3', num_classes=200)
 model = model.to(device)  # Send the model to GPU
 
 # Show model summary
 # summary(model, (3, 32, 32))  # resnet
-summary(model, (3, 224, 224))  # densenet
+# summary(model, (3, 224, 224))  # densenet
+summary(model, (3, 320, 300))
 num_of_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 print('Total number of params:', num_of_params)
 
@@ -168,11 +168,9 @@ for epoch in tqdm(range(EPOCH)):
     print('Training Loss: {:.4f} Acc: {:.4f}'.format(epoch_loss, epoch_acc))
 
     # Decay learning rate
-    if (epoch+1) > 5:
-        if (epoch+1) % 5 == 0:
-            curr_lr /= 2
-            update_lr(optimizer, curr_lr)
-
+    if (epoch+1) % 10 == 0:
+        curr_lr /= 2
+        update_lr(optimizer, curr_lr)
     # scheduler.step()
 
 
@@ -232,5 +230,5 @@ for epoch in tqdm(range(EPOCH)):
 # print('Best epoch:', best_epoch)
 # print('Top3 error rate of validation data:', val_top3error_history)
 
-torch.save(model, 'output/models/densenet161_3.pth')
+torch.save(model, 'output/models/efficientnetb3_1.pth')
 print('Finish training. The last model is saved in output/models folder.')
