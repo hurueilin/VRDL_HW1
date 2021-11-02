@@ -94,8 +94,8 @@ optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=0.9, weight_deca
 optimizer_centloss = torch.optim.SGD(criterion_CL.parameters(), lr=0.5)
 
 # Consine lr
-# t = 10  # warm-up epochs
-# T = EPOCH  # First 10 epoch for warm-up, T eooch for cosine rate
+# t = 5  # warm-up epochs
+# T = EPOCH  # First t epoch for warm-up, (EPOCH-t) eooch for cosine rate
 # n_t = 0.5
 # lambda1 = lambda epoch: (0.9*epoch / t+0.1) if epoch < t else  0.1  if n_t * (1+math.cos(math.pi*(epoch - t)/(T-t)))<0.1 else n_t * (1+math.cos(math.pi*(epoch - t)/(T-t)))
 # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
@@ -231,5 +231,5 @@ for epoch in tqdm(range(EPOCH)):
 # print('Best epoch:', best_epoch)
 # print('Top3 error rate of validation data:', val_top3error_history)
 
-torch.save(model, 'output/models/efficientnetb4_1.pth')
+torch.save(model, 'output/models/efficientnetb4_XX.pth')
 print('Finish training. The last model is saved in output/models folder.')
