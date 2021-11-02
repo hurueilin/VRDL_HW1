@@ -34,7 +34,7 @@ class MyDataset(Dataset):
 
         self.data = data
         self.transform = transform
-        
+
     def __getitem__(self, index):
         imgName, label = self.data[index]
         # img = Image.open('data/training_images/'+imgName).convert('RGB')
@@ -42,12 +42,12 @@ class MyDataset(Dataset):
 
         if self.transform:
             img = self.transform(img)
-        
+
         # Convert 'str' label to tensor
         label = torch.tensor(int(label) - 1)  # label 0~199 matches class 1~200
 
         return img, label
-    
+
     def __len__(self):
         return len(self.data)
 
@@ -68,8 +68,6 @@ train_dataset = MyDataset(txt_file='data/training_augmented_labels.txt', transfo
 train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                            batch_size=BATCH_SIZE,
                                            shuffle=True)
-
-
 
 # Init well-known model and modify the last FC layer
 # model = torchvision.models.resnext101_32x8d(pretrained=True)
@@ -100,10 +98,12 @@ optimizer_centloss = torch.optim.SGD(criterion_CL.parameters(), lr=0.5)
 # lambda1 = lambda epoch: (0.9*epoch / t+0.1) if epoch < t else  0.1  if n_t * (1+math.cos(math.pi*(epoch - t)/(T-t)))<0.1 else n_t * (1+math.cos(math.pi*(epoch - t)/(T-t)))
 # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
 
-# For updating learning rate
-def update_lr(optimizer, lr):    
+
+def update_lr(optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+
+
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
@@ -124,12 +124,12 @@ for epoch in tqdm(range(EPOCH)):
     model.train()  # Set model to training mode
     running_loss = 0.0
     running_corrects = 0
-    
+
     print('\nCurrent lr:', get_lr(optimizer))
     for i, (images, labels) in enumerate(tqdm(train_loader)):
         images = images.to(device)
         labels = labels.to(device)
-        
+
         with torch.set_grad_enabled(True):
             # Forward pass
             outputs = model(images)
@@ -137,25 +137,21 @@ for epoch in tqdm(range(EPOCH)):
 
             cross_entropy_loss = criterion_CE(outputs, labels)
             center_loss = criterion_CL(outputs, labels)
-            loss =  center_loss * alpha + cross_entropy_loss
-            # print(f'cross_entropy_loss: {cross_entropy_loss.item()}')
-            # print(f'center_loss: {center_loss.item()}')
-            # print(f'total weighted loss: {loss.item()}')
-            
+            loss = center_loss * alpha + cross_entropy_loss
+
             # zero the parameter gradients
             optimizer.zero_grad()
             optimizer_centloss.zero_grad()
-            
+
             # Backward and optimize (only in train phase)
             loss.backward()
             optimizer.step()
-           
+
             # multiple (1./alpha) in order to remove the effect of alpha on updating centers
             for param in criterion_CL.parameters():
                 param.grad.data *= (1./alpha)
             optimizer_centloss.step()
-            
-        
+
         # statistics
         running_loss += loss.item() * images.size(0)  # images.size(0) means BATCH_SIZE
         running_corrects += torch.sum(preds == labels)
@@ -173,63 +169,6 @@ for epoch in tqdm(range(EPOCH)):
         curr_lr /= 2
         update_lr(optimizer, curr_lr)
     # scheduler.step()
-
-
-    # # ---------- Validation ----------
-    # model.eval()  # Set model to evaluate mode
-    # running_loss = 0.0
-    # running_corrects = 0
-    # running_top3_errors = 0
-    # softmax = nn.Softmax(dim=-1)  # Define Softmax function
-
-    # for i, (images, labels) in enumerate(tqdm(val_loader)):
-    #     images = images.to(device)
-    #     labels = labels.to(device)
-        
-    #     with torch.set_grad_enabled(False):         
-    #         outputs = model(images)
-    #         _, preds = torch.max(outputs, 1)
-            
-    #         loss = criterion(outputs, labels)
-            
-    #     probabilities = softmax(outputs)
-    #     _, indices = torch.sort(probabilities, descending=True)
-    #     top3_preds = indices[:, :3]  # Top-3 predicted class
-
-    #     # count top3 errors
-    #     for row, label in zip(top3_preds, labels):
-    #         if label not in row:
-    #             running_top3_errors += 1
-
-    #     # statistics
-    #     running_loss += loss.item() * images.size(0)
-    #     running_corrects += torch.sum(preds == labels)
-
-
-    # epoch_loss = running_loss / len(val_dataset)
-    # epoch_acc = running_corrects.double() / len(val_dataset)
-    # epoch_top3error = running_top3_errors / len(val_dataset)
-    # val_loss_history.append(epoch_loss)
-    # val_accuracy_history.append(epoch_acc)
-    # val_top3error_history.append(epoch_top3error)
-
-    # if epoch_acc > best_acc:
-    #     best_acc = epoch_acc
-    #     best_epoch = epoch
-    #     torch.save(model, 'output/best_model.pth')
-    
-    # # print validation info
-    # print('Val Loss: {:.4f} Acc: {:.4f}'.format(epoch_loss, epoch_acc))
-
-
-# Output the training info cruves
-# util.save_loss_history(training_loss_history, val_loss_history, EPOCH)
-# util.save_loss_history(training_loss_history, EPOCH)
-# util.save_accuracy_history(training_accuracy_history, val_accuracy_history, EPOCH)
-# util.save_top3error_history(val_top3error_history, EPOCH)
-# print('Best accuracy in validation:', best_acc)
-# print('Best epoch:', best_epoch)
-# print('Top3 error rate of validation data:', val_top3error_history)
 
 torch.save(model, 'output/models/efficientnetb4_XX.pth')
 print('Finish training. The last model is saved in output/models folder.')

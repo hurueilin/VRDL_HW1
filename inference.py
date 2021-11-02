@@ -37,7 +37,7 @@ class MyDataset(Dataset):
 
         self.data = data
         self.transform = transform
-        
+
     def __getitem__(self, index):
         imgName = self.data[index]
         img = Image.open('data/testing_images/'+imgName).convert('RGB')
@@ -46,7 +46,7 @@ class MyDataset(Dataset):
             img = self.transform(img)
 
         return img
-    
+
     def __len__(self):
         return len(self.data)
 
@@ -81,7 +81,6 @@ for i, modelFile in enumerate(modelFiles):
     models.append(torch.load(f'output/models/{modelFile}'))
 
 
-
 # ---------- Testing: save Top1 predicted label to predictions list ----------
 print('======= Predictions Starts =======')
 modelsPredictions = []
@@ -100,11 +99,9 @@ for i, model in enumerate(models):
                 predictions.append(item.tolist())
 
             total += images.size(0)
-        
+
         modelsPredictions.append(predictions)
         print(f'Finish saving predictions of {total} testing data of model #{i}!')
-
-
 
 print('Majority voting...')
 submission = util.majorityVote(modelsPredictions)
@@ -113,7 +110,7 @@ submission = util.majorityVote(modelsPredictions)
 # Create submission file: answer.txt
 submission = []
 with open('data/testing_img_order.txt') as f:
-     test_images = [x.strip() for x in f.readlines()]  # all the testing images
+    test_images = [x.strip() for x in f.readlines()]  # all the testing images
 
 for imgName, pred in zip(test_images, predictions):
     predicted_class = label_mapping[pred]
