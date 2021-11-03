@@ -15,10 +15,10 @@ Packages
 * torchvision: 0.8.2+cu110
 * torch-summary: 1.4.4
 * numpy: 1.19.5
-* Center Loss
+* Center Loss\n
 The `center_loss.py` in my project is copied from [this](https://github.com/KaiyangZhou/pytorch-center-loss) repository 
-* [EfficientNet](https://github.com/lukemelas/EfficientNet-PyTorch)
-Install with `pip install efficientnet_pytorch`,
+* [EfficientNet](https://github.com/lukemelas/EfficientNet-PyTorch)\n
+Install with `pip install efficientnet_pytorch`,\n
 and load a pretrained EfficientNet with:
     ```python
     from efficientnet_pytorch import EfficientNet
