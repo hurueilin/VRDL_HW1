@@ -22,7 +22,7 @@ Install with `pip install efficientnet_pytorch`,
 and load a pretrained EfficientNet with:
     ```python
     from efficientnet_pytorch import EfficientNet
-    model = EfficientNet.from_pretrained('efficientnet-b4')
+    model = EfficientNet.from_pretrained('efficientnet-b4', num_classes=200)
     ```
 
 ## Training
