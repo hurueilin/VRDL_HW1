@@ -34,13 +34,16 @@ python Train.py
 1. Clone this project or download ZIP.
 
 
-2. Download the submitted [efficientnetb4_1.pth](https://drive.google.com/file/d/1Uaqc4QZGj8lkL2P8r41cl0OLhiY3k63q/view?usp=sharing) model.
+2. Create a folder named `data` and put `testing_images`, `classes.txt`, `testing_img_order.txt` inside.
 
 
-3. Create folder `output/models` and put the .pth file inside.
+3. Download the submitted [efficientnetb4_1.pth](https://drive.google.com/file/d/1Uaqc4QZGj8lkL2P8r41cl0OLhiY3k63q/view?usp=sharing) model.
 
 
-4. To create the `answer.txt` file, run this command:
+4. Create folder `output/models` and put the .pth file inside.
+
+
+5. To create the `answer.txt` file, run this command:
     ```
     python inference.py
     ```
