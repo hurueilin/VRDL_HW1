@@ -111,11 +111,7 @@ def get_lr(optimizer):
 
 # Train the model
 curr_lr = LR
-best_acc = 0
-best_epoch = 0
 training_loss_history, training_accuracy_history = [], []
-val_loss_history, val_accuracy_history = [], []
-val_top3error_history = []
 alpha = 0.001  # alpha (float): weight for center loss
 
 
